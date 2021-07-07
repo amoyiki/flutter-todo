@@ -1,7 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_todo/sqlite_util.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:path_provider/path_provider.dart';
 
-void main() {
+import 'models.dart';
+
+void main() async {
   runApp(MaterialApp(
     title: "Todo",
     debugShowCheckedModeBanner: false,
@@ -55,30 +60,36 @@ class _MainPageState extends State<MainPage>
               builder: (context) {
                 return AlertDialog(
                   title: Text('新增事项'),
-                  content: Card(
-                    elevation: 0.0,
-                    child: Column(
-                      children: <Widget>[
-                        TextField(
-                          decoration: InputDecoration(
-                            hintText: '输入待办事项',
-                            filled: true,
-                            fillColor: Colors.grey.shade50,
+                  content: SizedBox(
+                    height: 200,
+                    child: Card(
+                      elevation: 0.0,
+                      child: Column(
+                        children: <Widget>[
+                          TextField(
+                            keyboardType: TextInputType.multiline,
+                            maxLines: null, //不限制行数
+                            decoration: InputDecoration(
+                              hintText: '输入待办事项',
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                   actions: <Widget>[
                     TextButton(
                       child: Text('取消'),
-                      onPressed: (){
+                      onPressed: () {
                         Navigator.pop(context);
                       },
                     ),
                     TextButton(
                       child: Text('确定'),
-                      onPressed: (){
+                      onPressed: () async {
+                        await SqliteUtil.sqliteUtil.insertNewTask(TaskModel.fromJson({"id": 1, "content": "测试", "isComplete": false, "created": "2021-07-07 11:11:11", "updated": "2021-07-07 11:11:11"}));
                         Navigator.pop(context);
                       },
                     ),
