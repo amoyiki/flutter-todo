@@ -8,7 +8,7 @@ part of 'models.dart';
 
 TaskModel _$TaskModelFromJson(Map<String, dynamic> json) {
   return TaskModel(
-    id: json['id'] as int,
+    id: json['id'],
     content: json['content'] as String,
     isComplete: json['isComplete'] as bool,
     created: json['created'] as String,

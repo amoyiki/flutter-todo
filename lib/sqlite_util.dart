@@ -10,9 +10,9 @@ import 'package:sqflite/sqflite.dart';
 class SqliteUtil {
   SqliteUtil._();
   static SqliteUtil sqliteUtil = SqliteUtil._();
-  static Database? _database;
+  static late Database _database;
   Future<Database> get database async =>
-      _database ??= await createDatabase();
+      _database = await createDatabase();
 
   Future<Database> createDatabase() async {
 
@@ -27,7 +27,9 @@ class SqliteUtil {
   insertNewTask(TaskModel taskModel) async {
     Database database = await sqliteUtil.database;
     int rowIndex = await database.insert(tableName, taskModel.toJson());
-    print(rowIndex);
+    print("add row $rowIndex");
+    List<Map> result = await database.query(tableName, where: "id = ?", whereArgs: [rowIndex]);
+    print('data is ${result}');
   }
 
   getTaskAll() async {
@@ -38,19 +40,19 @@ class SqliteUtil {
 
   getTaskById(int id) async {
     Database database = await sqliteUtil.database;
-    List<Map> result = await database.query(tableName, where: "id=$id");
+    List<Map> result = await database.query(tableName, where: "id = ?", whereArgs: [id]);
     print(result);
   }
 
   deleteTaskById(int id) async {
     Database database = await sqliteUtil.database;
-    int rowIndex = await database.delete(tableName, where: "id=$id");
+    int rowIndex = await database.delete(tableName, where: "id = ?", whereArgs: [id]);
     print(rowIndex);
   }
 
   updateTask(TaskModel taskModel) async {
     Database database = await sqliteUtil.database;
-    database.update(tableName, taskModel.toJson(), where: "id=${taskModel.id}");
+    database.update(tableName, taskModel.toJson(), where: "id = ?", whereArgs: [taskModel.id]);
   }
 
 

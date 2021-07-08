@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_todo/sqlite_util.dart';
+import 'package:intl/intl.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -22,6 +23,7 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  TextEditingController _editingController = TextEditingController();
 
   @override
   void initState() {
@@ -32,6 +34,7 @@ class _MainPageState extends State<MainPage>
   @override
   void dispose() {
     _tabController.dispose();
+    // _editingController.dispose();
     super.dispose();
   }
 
@@ -68,6 +71,8 @@ class _MainPageState extends State<MainPage>
                         children: <Widget>[
                           TextField(
                             keyboardType: TextInputType.multiline,
+                            autofocus: true,
+                            controller: _editingController,
                             maxLines: null, //不限制行数
                             decoration: InputDecoration(
                               hintText: '输入待办事项',
@@ -89,7 +94,12 @@ class _MainPageState extends State<MainPage>
                     TextButton(
                       child: Text('确定'),
                       onPressed: () async {
-                        await SqliteUtil.sqliteUtil.insertNewTask(TaskModel.fromJson({"id": 1, "content": "测试", "isComplete": false, "created": "2021-07-07 11:11:11", "updated": "2021-07-07 11:11:11"}));
+                        DateTime now = DateTime.now();
+                        String currentStr = _editingController.text;
+                        DateFormat dateFormat = DateFormat("yyyy-MM-dd HH:mm:ss "); // how you want it to be formatted
+                        String nowStr = dateFormat.format(now); 
+                        TaskModel taskModel = TaskModel.fromJson({"content": currentStr, "isComplete": false, "created": nowStr, "updated": nowStr});
+                        await SqliteUtil.sqliteUtil.insertNewTask(taskModel);
                         Navigator.pop(context);
                       },
                     ),
