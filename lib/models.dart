@@ -8,7 +8,7 @@ part 'models.g.dart';
 class TaskModel {
   int? id;
   String content;
-  bool isComplete;
+  int isComplete;
   String? created;
   String? updated;
 

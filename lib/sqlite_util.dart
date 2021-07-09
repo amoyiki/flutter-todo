@@ -31,30 +31,40 @@ class SqliteUtil {
     print('data is ${result}');
   }
 
-  getTaskAll() async {
+  Future<List<TaskModel>> getTaskAll() async {
     Database database = await sqliteUtil.database;
-    List<Map> result = await database.query(tableName);
-    print(result);
+    List<Map<String, dynamic>> result = await database.query(tableName);
+    return result.map((e) => TaskModel.fromJson(e)).toList();
   }
 
-  getTaskByMap(LinkedHashMap where, int limit, int offset) async {
+  Future<List<TaskModel>> getTaskByMap(
+      LinkedHashMap<String, dynamic> where, int limit, int offset) async {
     Database database = await sqliteUtil.database;
     String whereStr = "";
     List<String> whereKeyList = [];
-    List<String> whereValList = [];
+    List<dynamic> whereValList = [];
     for (var key in where.keys) {
       whereKeyList.add(' $key = ? ');
     }
     for (var v in where.values) {
       whereValList.add(v);
     }
-    whereStr = whereKeyList.join("AND");
-    List<Map> result = await database.query(tableName,
+    print(whereKeyList);
+    print(whereValList);
+    if (whereValList.length > 1) {
+      whereStr = whereKeyList.join("AND");
+    } else {
+      whereStr = whereKeyList.first;
+    }
+    List<Map<String, dynamic>> result = await database.query(tableName,
         where: whereStr, whereArgs: whereValList, limit: limit, offset: offset);
-    print(result);
-    return result;
+
+    List<Map<String, dynamic>> result1 = await database.query(tableName);
+    print(result1.length);
+    return result1.map((e) => TaskModel.fromJson(e)).toList();
   }
-  getTaskCountByMap(LinkedHashMap where) async {
+
+  Future<int> getTaskCountByMap(LinkedHashMap<String, dynamic> where) async {
     Database database = await sqliteUtil.database;
     String whereStr = "";
     List<String> whereKeyList = [];
@@ -65,31 +75,42 @@ class SqliteUtil {
     for (var v in where.values) {
       whereValList.add(v);
     }
-    whereStr = whereKeyList.join("AND");
-    List<Map> result = await database.query(tableName, columns: ['id'],
-        where: whereStr, whereArgs: whereValList);
-    print(result);
-    return result.length;
+    if (whereValList.length > 1) {
+      whereStr = whereKeyList.join("AND");
+    } else {
+      whereStr = whereKeyList.first;
+    }
+
+    List<Map> result = await database.query(tableName,
+        columns: ['id'], where: whereStr, whereArgs: whereValList);
+    List<Map<String, dynamic>> result1 = await database.query(tableName);
+    print(result1.length);
+    return result1.length;
   }
 
-  getTaskById(int id) async {
+  Future<TaskModel> getTaskById(int id) async {
     Database database = await sqliteUtil.database;
-    List<Map> result =
+    List<Map<String, dynamic>> result =
         await database.query(tableName, where: "id = ?", whereArgs: [id]);
     print(result);
-    return result;
+    return result.map((e) => TaskModel.fromJson(e)).first;
   }
 
-  deleteTaskById(int id) async {
+  Future<int> deleteTaskById(int id) async {
     Database database = await sqliteUtil.database;
     int rowIndex =
         await database.delete(tableName, where: "id = ?", whereArgs: [id]);
     print(rowIndex);
+    return rowIndex;
   }
 
-  updateTask(TaskModel taskModel) async {
+  Future<void> updateTask(TaskModel taskModel) async {
     Database database = await sqliteUtil.database;
     database.update(tableName, taskModel.toJson(),
         where: "id = ?", whereArgs: [taskModel.id]);
+  }
+
+  close() {
+    _database.close();
   }
 }

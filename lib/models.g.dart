@@ -10,7 +10,7 @@ TaskModel _$TaskModelFromJson(Map<String, dynamic> json) {
   return TaskModel(
     id: json['id'],
     content: json['content'] as String,
-    isComplete: json['isComplete'] as bool,
+    isComplete: json['isComplete']  as int,
     created: json['created'] as String,
     updated: json['updated'] as String,
   );

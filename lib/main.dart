@@ -1,5 +1,6 @@
 import 'dart:collection';
-
+import 'dart:ffi';
+import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_todo/sqlite_util.dart';
@@ -24,19 +25,29 @@ class _MainPageState extends State<MainPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   TextEditingController _editingController = TextEditingController();
-  var _datas = <TaskModel>[];
 
+  LinkedHashMap<String, dynamic> selectMap = LinkedHashMap();
+  List datal = [];
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    // _retrieveData(1, 0);
+    selectMap['isComplete'] = 0;
+    for (int i = 0; i < 100; i++) {
+      TaskModel t = TaskModel(
+          content: "Task$i",
+          isComplete: 0,
+          updated: '2021-07-01 00:00:00',
+          created: '2021-07-01 00:00:00');
+      SqliteUtil.sqliteUtil.insertNewTask(t);
+      datal.add(t);
+    }
   }
 
   @override
   void dispose() {
     _tabController.dispose();
-    // _editingController.dispose();
+    _editingController.dispose();
     super.dispose();
   }
 
@@ -68,24 +79,32 @@ class _MainPageState extends State<MainPage>
       body: TabBarView(
         controller: _tabController,
         children: <Widget>[
-          ListView.separated(
-            itemCount: _datas.length,
-            itemBuilder: (BuildContext context, int index) {
-              return Container(
-                alignment: Alignment.center,
-                padding: EdgeInsets.all(16.0),
-                child: Text('====已经到达底线了==='),
-              );
+          FutureBuilder<List>(
+            future: SqliteUtil.sqliteUtil.getTaskAll(),
+            initialData: datal,
+            builder: (context, snapshot) {
+              return snapshot.hasData
+                  ? new ListView.builder(
+                      padding: const EdgeInsets.all(10.0),
+                      itemCount: snapshot.data?.length ?? 0,
+                      itemBuilder: (context, i) {
+                        return _bulidRow(snapshot.data?[i]);
+                      },
+                    )
+                  : Center(child: CircularProgressIndicator());
             },
-            separatorBuilder: (context, index) => Divider(
-              height: .0,
-            ),
           ),
           Center(
             child: Text("这是已完成列表"),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _bulidRow(TaskModel taskModel) {
+    return ListTile(
+      title: Text(taskModel.content),
     );
   }
 
@@ -134,25 +153,17 @@ class _MainPageState extends State<MainPage>
                   String nowStr = dateFormat.format(now);
                   TaskModel taskModel = TaskModel.fromJson({
                     "content": currentStr,
-                    "isComplete": false,
+                    "isComplete": 0,
                     "created": nowStr,
                     "updated": nowStr
                   });
                   await SqliteUtil.sqliteUtil.insertNewTask(taskModel);
                   Navigator.pop(context);
+                  setState(() {});
                 },
               ),
             ],
           );
         });
-  }
-
-  void _retrieveData(int limit, int offset) {
-    LinkedHashMap map = new LinkedHashMap();
-    map['isComplete'] = false;
-    var taskByMap = SqliteUtil.sqliteUtil.getTaskByMap(map, limit, offset);
-    for (var m in taskByMap) {
-      _datas.add(TaskModel.fromJson(m));
-    }
   }
 }
