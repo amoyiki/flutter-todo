@@ -59,9 +59,7 @@ class SqliteUtil {
     List<Map<String, dynamic>> result = await database.query(tableName,
         where: whereStr, whereArgs: whereValList, limit: limit, offset: offset);
 
-    List<Map<String, dynamic>> result1 = await database.query(tableName);
-    print(result1.length);
-    return result1.map((e) => TaskModel.fromJson(e)).toList();
+    return result.map((e) => TaskModel.fromJson(e)).toList();
   }
 
   Future<int> getTaskCountByMap(LinkedHashMap<String, dynamic> where) async {
@@ -83,9 +81,7 @@ class SqliteUtil {
 
     List<Map> result = await database.query(tableName,
         columns: ['id'], where: whereStr, whereArgs: whereValList);
-    List<Map<String, dynamic>> result1 = await database.query(tableName);
-    print(result1.length);
-    return result1.length;
+    return result.length;
   }
 
   Future<TaskModel> getTaskById(int id) async {

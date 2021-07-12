@@ -25,29 +25,35 @@ class _MainPageState extends State<MainPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   TextEditingController _editingController = TextEditingController();
-
-  LinkedHashMap<String, dynamic> selectMap = LinkedHashMap();
-  List datal = [];
+  Future<List>? future;
+  GlobalKey<RefreshIndicatorState> _refreshKey = GlobalKey<RefreshIndicatorState>();
+  ScrollController _scrollController = ScrollController();
+  int pageNum = 0;
+  List list = [] as List;
+  int total = 16;
+  bool enableMore = false;
+  
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    selectMap['isComplete'] = 0;
-    for (int i = 0; i < 100; i++) {
-      TaskModel t = TaskModel(
-          content: "Task$i",
-          isComplete: 0,
-          updated: '2021-07-01 00:00:00',
-          created: '2021-07-01 00:00:00');
-      SqliteUtil.sqliteUtil.insertNewTask(t);
-      datal.add(t);
-    }
+    _tabController = TabController(length: 2, vsync: this);    
+    pageNum = 0;
+    future = loadingData(pageNum);
+    _scrollController.addListener(() {
+      int offset = _scrollController.position.pixels.toInt();
+      if (_scrollController.position.pixels >=
+          _scrollController.position.maxScrollExtent - 50) {
+          print('加载更多');
+          _loadMore();
+        }
+    });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     _editingController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -80,18 +86,44 @@ class _MainPageState extends State<MainPage>
         controller: _tabController,
         children: <Widget>[
           FutureBuilder<List>(
-            future: SqliteUtil.sqliteUtil.getTaskAll(),
-            initialData: datal,
-            builder: (context, snapshot) {
-              return snapshot.hasData
-                  ? new ListView.builder(
+            future: future,
+            builder: (context, AsyncSnapshot<List> snapshot) {
+              if(snapshot.connectionState == ConnectionState.active || snapshot.connectionState == ConnectionState.waiting) {
+                return Center(
+                  child: CircularProgressIndicator(),
+                );
+              }
+              if (snapshot.connectionState == ConnectionState.done) {
+                print('done');
+                if(snapshot.hasError) {
+                  return Center(
+                    child: Text('ERROR'),
+                  );
+                }else if (snapshot.hasData) {
+                  if (pageNum == 0 ){
+                    List? l = snapshot.data ?? [];
+                    list.addAll(l);
+                  }
+                  if (total > 0 && total <= list.length) {
+                    enableMore = false;
+                  }else{
+                    enableMore = true;
+                  }
+                  return RefreshIndicator(
+                  
+                    child: ListView.builder(
+                      controller: enableMore ? _scrollController : null,
                       padding: const EdgeInsets.all(10.0),
-                      itemCount: snapshot.data?.length ?? 0,
+                      itemCount: list.length,
                       itemBuilder: (context, i) {
-                        return _bulidRow(snapshot.data?[i]);
+                        return _bulidRow(list[i]);
                       },
-                    )
-                  : Center(child: CircularProgressIndicator());
+                    ), 
+                    onRefresh: _onRefresh
+                    );
+                }
+              }
+               return  Center(child: CircularProgressIndicator());
             },
           ),
           Center(
@@ -106,6 +138,38 @@ class _MainPageState extends State<MainPage>
     return ListTile(
       title: Text(taskModel.content),
     );
+  }
+
+  // 下拉刷新
+  Future<Null> _onRefresh() {
+    return Future.delayed(Duration(seconds: 1), (){
+      print('正在刷新...');
+      list.clear();
+      pageNum = 0;
+      setState(() {
+        future = loadingData(pageNum);
+      });
+    });
+  }
+  // 加载更多
+  Future<Null> _loadMore(){
+    return Future.delayed(Duration(seconds: 1), () {
+      pageNum += 1;
+      print('加载更多页面$pageNum');
+       loadingData(pageNum).then((List value) => {
+          setState(() {
+            list.addAll(value);
+        })
+      });
+      
+    });
+  }
+
+  Future<List> loadingData(int pageNum) async {
+    LinkedHashMap<String, dynamic> selectMap = LinkedHashMap();
+    selectMap['isComplete'] = 0;
+    int offset = (pageNum - 1) * 15;
+    return SqliteUtil.sqliteUtil.getTaskByMap(selectMap, 15, offset);
   }
 
   /// 弹框方法
@@ -158,6 +222,7 @@ class _MainPageState extends State<MainPage>
                     "updated": nowStr
                   });
                   await SqliteUtil.sqliteUtil.insertNewTask(taskModel);
+                  _editingController.clear();
                   Navigator.pop(context);
                   setState(() {});
                 },
