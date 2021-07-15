@@ -25,8 +25,7 @@ class _MainPageState extends State<MainPage>
   late TabController _tabController;
   TextEditingController _editingController = TextEditingController();
   Future<List>? future;
-  GlobalKey<RefreshIndicatorState> _refreshKey =
-      GlobalKey<RefreshIndicatorState>();
+
   ScrollController _scrollController = ScrollController();
   int pageNum = 1;
   List list = [] as List;
@@ -50,8 +49,8 @@ class _MainPageState extends State<MainPage>
     // _bulidList();
     _scrollController.addListener(() {
       int offset = _scrollController.position.pixels.toInt();
-      if (_scrollController.position.pixels >=
-          _scrollController.position.maxScrollExtent - 50) {
+      if (_scrollController.position.pixels ==
+          _scrollController.position.maxScrollExtent) {
         if (!isLoading) {
           isLoading = true;
           print('加载更多');
@@ -87,14 +86,14 @@ class _MainPageState extends State<MainPage>
             tooltip: "编辑",
             onPressed: () {
               print('编辑');
-              list.forEach((element) {
-                element['select'] = false;
-              });
-              this.completedIds = [];
-              setState(() {
-                this.isOff = !this.isOff;
-                this.list = list;
-              });
+            //   list.forEach((element) {
+            //     element['select'] = false;
+            //   });
+            //   this.completedIds = [];
+            //   setState(() {
+            //     this.isOff = !this.isOff;
+            //     this.list = list;
+            //   });
             },
           ),
         ],
@@ -200,7 +199,9 @@ class _MainPageState extends State<MainPage>
             return Center(
               child: Text('ERROR'),
             );
-          } else if (snapshot.hasData) {
+          } else if (!snapshot.hasData || snapshot.data?.length == 0) {
+            return EmptyItem();
+          }else if (snapshot.hasData) {
             if (pageNum <= 1) {
               List? l = snapshot.data ?? [];
               list.addAll(l);
@@ -292,12 +293,27 @@ class _MainPageState extends State<MainPage>
                   await SqliteUtil.sqliteUtil.insertNewTask(taskModel);
                   _editingController.clear();
                   Navigator.pop(context);
-                  setState(() {});
+                  setState(() {
+                    
+                  });
                 },
               ),
             ],
           );
         });
+  }
+}
+
+class EmptyItem extends StatelessWidget {
+  const EmptyItem({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+     return Container(
+      child: Center(
+        child: Text('列表数据为空'),
+      ),
+    );
   }
 }
 
@@ -318,3 +334,4 @@ class _LoadMoreItemState extends State<LoadMoreItem> {
     );
   }
 }
+
