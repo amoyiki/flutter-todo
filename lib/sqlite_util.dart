@@ -49,8 +49,6 @@ class SqliteUtil {
     for (var v in where.values) {
       whereValList.add(v);
     }
-    print(whereKeyList);
-    print(whereValList);
     if (whereValList.length > 1) {
       whereStr = whereKeyList.join("AND");
     } else {
@@ -66,7 +64,7 @@ class SqliteUtil {
     Database database = await sqliteUtil.database;
     String whereStr = "";
     List<String> whereKeyList = [];
-    List<String> whereValList = [];
+    List<dynamic> whereValList = [];
     for (var key in where.keys) {
       whereKeyList.add(' $key = ? ');
     }
@@ -78,9 +76,9 @@ class SqliteUtil {
     } else {
       whereStr = whereKeyList.first;
     }
-
-    List<Map> result = await database.query(tableName,
-        columns: ['id'], where: whereStr, whereArgs: whereValList);
+    List<Map<String, dynamic>> result = await database.query(tableName,
+        where: whereStr, whereArgs: whereValList);
+    print('总数 ${result.length}');
     return result.length;
   }
 

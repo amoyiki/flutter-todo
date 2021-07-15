@@ -1,6 +1,5 @@
 import 'dart:collection';
-import 'dart:ffi';
-import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_todo/sqlite_util.dart';
@@ -26,26 +25,39 @@ class _MainPageState extends State<MainPage>
   late TabController _tabController;
   TextEditingController _editingController = TextEditingController();
   Future<List>? future;
-  GlobalKey<RefreshIndicatorState> _refreshKey = GlobalKey<RefreshIndicatorState>();
+  GlobalKey<RefreshIndicatorState> _refreshKey =
+      GlobalKey<RefreshIndicatorState>();
   ScrollController _scrollController = ScrollController();
-  int pageNum = 0;
+  int pageNum = 1;
   List list = [] as List;
-  int total = 16;
+  List completedIds = [] as List;
+  bool isOff = true;
+  int total = 0;
   bool enableMore = false;
-  
+  bool isLoading = false;
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);    
-    pageNum = 0;
+    _tabController = TabController(length: 2, vsync: this);
+    pageNum = 1;
     future = loadingData(pageNum);
+    LinkedHashMap<String, dynamic> selectMap = LinkedHashMap();
+    selectMap['isComplete'] = 0;
+    SqliteUtil.sqliteUtil
+        .getTaskCountByMap(selectMap)
+        .then((value) => total = value);
+    // _bulidList();
     _scrollController.addListener(() {
       int offset = _scrollController.position.pixels.toInt();
       if (_scrollController.position.pixels >=
           _scrollController.position.maxScrollExtent - 50) {
+        if (!isLoading) {
+          isLoading = true;
           print('加载更多');
           _loadMore();
         }
+      }
     });
   }
 
@@ -69,6 +81,23 @@ class _MainPageState extends State<MainPage>
           ],
           controller: _tabController,
         ),
+        actions: <Widget>[
+          IconButton(
+            icon: Icon(Icons.edit),
+            tooltip: "编辑",
+            onPressed: () {
+              print('编辑');
+              list.forEach((element) {
+                element['select'] = false;
+              });
+              this.completedIds = [];
+              setState(() {
+                this.isOff = !this.isOff;
+                this.list = list;
+              });
+            },
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         child: Icon(
@@ -85,47 +114,7 @@ class _MainPageState extends State<MainPage>
       body: TabBarView(
         controller: _tabController,
         children: <Widget>[
-          FutureBuilder<List>(
-            future: future,
-            builder: (context, AsyncSnapshot<List> snapshot) {
-              if(snapshot.connectionState == ConnectionState.active || snapshot.connectionState == ConnectionState.waiting) {
-                return Center(
-                  child: CircularProgressIndicator(),
-                );
-              }
-              if (snapshot.connectionState == ConnectionState.done) {
-                print('done');
-                if(snapshot.hasError) {
-                  return Center(
-                    child: Text('ERROR'),
-                  );
-                }else if (snapshot.hasData) {
-                  if (pageNum == 0 ){
-                    List? l = snapshot.data ?? [];
-                    list.addAll(l);
-                  }
-                  if (total > 0 && total <= list.length) {
-                    enableMore = false;
-                  }else{
-                    enableMore = true;
-                  }
-                  return RefreshIndicator(
-                  
-                    child: ListView.builder(
-                      controller: enableMore ? _scrollController : null,
-                      padding: const EdgeInsets.all(10.0),
-                      itemCount: list.length,
-                      itemBuilder: (context, i) {
-                        return _bulidRow(list[i]);
-                      },
-                    ), 
-                    onRefresh: _onRefresh
-                    );
-                }
-              }
-               return  Center(child: CircularProgressIndicator());
-            },
-          ),
+          _bulidList(),
           Center(
             child: Text("这是已完成列表"),
           ),
@@ -134,42 +123,121 @@ class _MainPageState extends State<MainPage>
     );
   }
 
+  // 单条记录样式
   Widget _bulidRow(TaskModel taskModel) {
     return ListTile(
       title: Text(taskModel.content),
     );
   }
 
+  // 底部按钮组 全选/完成
+  // Widget _bottomButton(){
+  //   return Offstage(
+  //     offstage: isOff,
+  //     child: ,
+  //   );
+  // }
+
   // 下拉刷新
   Future<Null> _onRefresh() {
-    return Future.delayed(Duration(seconds: 1), (){
+    if (isLoading) {
+      return Future.value(null);
+    }
+    return Future.delayed(Duration(seconds: 1), () {
       print('正在刷新...');
       list.clear();
-      pageNum = 0;
       setState(() {
+        isLoading = true;
+        pageNum = 1;
         future = loadingData(pageNum);
+        _bulidList();
       });
     });
   }
+
   // 加载更多
-  Future<Null> _loadMore(){
-    return Future.delayed(Duration(seconds: 1), () {
-      pageNum += 1;
-      print('加载更多页面$pageNum');
-       loadingData(pageNum).then((List value) => {
+  Future<bool> _loadMore() {
+    pageNum += 1;
+    var a = list.map((e) => e.getInfo).toList();
+    print('当前页面$pageNum, 加载更多页面$a');
+    loadingData(pageNum).then((List value) => {
           setState(() {
+            isLoading = false;
             list.addAll(value);
-        })
-      });
-      
-    });
+            // _bulidList();
+          })
+        });
+    return Future.value(true);
   }
 
   Future<List> loadingData(int pageNum) async {
     LinkedHashMap<String, dynamic> selectMap = LinkedHashMap();
     selectMap['isComplete'] = 0;
     int offset = (pageNum - 1) * 15;
-    return SqliteUtil.sqliteUtil.getTaskByMap(selectMap, 15, offset);
+    print('总数是$total');
+    return Future.delayed(Duration(seconds: 1), () {
+      return SqliteUtil.sqliteUtil.getTaskByMap(selectMap, 15, offset);
+    });
+  }
+
+  // 构建一个FutureBuilder
+  FutureBuilder<List> _bulidList() {
+    return FutureBuilder<List>(
+      future: future,
+      builder: (context, AsyncSnapshot<List> snapshot) {
+        if (snapshot.connectionState == ConnectionState.active ||
+            snapshot.connectionState == ConnectionState.waiting) {
+          isLoading = true;
+          print('=========================');
+          return Center(
+            child: CircularProgressIndicator(),
+          );
+        }
+        if (snapshot.connectionState == ConnectionState.done) {
+          print('done');
+          isLoading = false;
+          if (snapshot.hasError) {
+            return Center(
+              child: Text('ERROR'),
+            );
+          } else if (snapshot.hasData) {
+            if (pageNum <= 1) {
+              List? l = snapshot.data ?? [];
+              list.addAll(l);
+            }
+            if (total > 0 && total <= list.length) {
+              enableMore = false;
+            } else {
+              enableMore = true;
+            }
+            if (isLoading) {
+              return Center(child: CircularProgressIndicator());
+            }
+
+            return RefreshIndicator(
+                child: ListView.separated(
+                  physics: AlwaysScrollableScrollPhysics(),
+                  controller: enableMore ? _scrollController : null,
+                  padding: const EdgeInsets.all(10.0),
+                  itemCount: list.length + (enableMore ? 1 : 0),
+                  itemBuilder: (context, i) {
+                    if (enableMore && i == list.length) {
+                      print('~~~~~~~~~~~~~~~~');
+                      return LoadMoreItem();
+                    }
+                    if (!enableMore && list.length >= total) {}
+                    return _bulidRow(list[i]);
+                  },
+                  separatorBuilder: (BuildContext context, int index) {
+                    return Divider();
+                  },
+                ),
+                onRefresh: _onRefresh);
+          }
+        }
+        return Center(child: CircularProgressIndicator());
+      },
+    );
   }
 
   /// 弹框方法
@@ -230,5 +298,23 @@ class _MainPageState extends State<MainPage>
             ],
           );
         });
+  }
+}
+
+class LoadMoreItem extends StatefulWidget {
+  LoadMoreItem({Key? key}) : super(key: key);
+
+  @override
+  _LoadMoreItemState createState() => _LoadMoreItemState();
+}
+
+class _LoadMoreItemState extends State<LoadMoreItem> {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      child: Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
   }
 }

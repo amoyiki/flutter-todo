@@ -22,5 +22,7 @@ class TaskModel {
 
   factory TaskModel.fromJson(Map<String, dynamic> json) => _$TaskModelFromJson(json);
   Map<String, dynamic> toJson() => _$TaskModelToJson(this);
+  String get getInfo => 'TaskModel($id,$content)';
+  
   
 }
